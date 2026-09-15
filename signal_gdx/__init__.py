@@ -2,6 +2,14 @@ from .backtest import Fold, walk_forward_backtest
 from .data import PRICE_COLUMNS, load_prices
 from .features import TARGET_COL, build_features
 from .models import make_elasticnet_model, make_shallow_lightgbm
+from .signals import (
+    Trade,
+    build_positions,
+    compute_prediction_zscore,
+    raw_threshold_signal,
+    sweep_signal_thresholds,
+    zscore_threshold_signal,
+)
 
 __all__ = [
     "PRICE_COLUMNS",
@@ -12,4 +20,10 @@ __all__ = [
     "walk_forward_backtest",
     "make_elasticnet_model",
     "make_shallow_lightgbm",
+    "Trade",
+    "build_positions",
+    "compute_prediction_zscore",
+    "raw_threshold_signal",
+    "sweep_signal_thresholds",
+    "zscore_threshold_signal",
 ]
