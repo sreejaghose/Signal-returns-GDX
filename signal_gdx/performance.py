@@ -1,7 +1,11 @@
 import numpy as np
 import pandas as pd
 
+from .signals import Trade
+
 TRADING_DAYS_PER_YEAR = 252
+AVG_DAYS_PER_MONTH = 365.25 / 12
+TRADE_INITIATION_ACTIONS = ("open", "restart", "flip")
 
 
 def compute_performance_metrics(returns: pd.Series, periods_per_year: int = TRADING_DAYS_PER_YEAR) -> dict:
@@ -31,6 +35,40 @@ def compute_performance_metrics(returns: pd.Series, periods_per_year: int = TRAD
         "max_drawdown": max_drawdown,
         "hit_rate": hit_rate,
         "n_days": n_days,
+    }
+
+
+def compute_trades_per_month(trades: list[Trade], index: pd.DatetimeIndex, min_trades_per_month: float = 1.0) -> dict:
+    """Trading frequency for one parameter combination, plus the min-frequency flag.
+
+    Counts only "open", "restart", and "flip" events as trades: each is the
+    strategy initiating a fresh directional stance (from flat, or reversing
+    an existing one). A "close" is a scheduled, predictable unwind rather
+    than a new trading decision, and a "double_down" merely sizes up an
+    already-open trade -- neither is counted as a separate trade here, even
+    though both are still charged transaction costs elsewhere. This keeps
+    the frequency check about how often the signal actually asks you to act,
+    which is what makes a sparse signal operationally impractical.
+
+    The backtest span is measured over `index` (the full predicted/aligned
+    date range the strategy was run over, not just the dates with trades),
+    so a combination with zero trades still gets a real (zero) frequency
+    rather than an undefined one.
+    """
+    n_trades = sum(1 for t in trades if t.action in TRADE_INITIATION_ACTIONS)
+
+    if len(index) < 2:
+        n_months = np.nan
+    else:
+        span_days = (index[-1] - index[0]).days
+        n_months = span_days / AVG_DAYS_PER_MONTH
+
+    trades_per_month = n_trades / n_months if n_months and n_months > 0 else 0.0
+
+    return {
+        "n_trades": n_trades,
+        "trades_per_month": trades_per_month,
+        "meets_min_frequency": trades_per_month >= min_trades_per_month,
     }
 
 
