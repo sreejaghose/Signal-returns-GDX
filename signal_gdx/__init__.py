@@ -1,7 +1,7 @@
 from .backtest import Fold, walk_forward_backtest
 from .costs import CostModel, apply_costs, compute_transaction_costs
 from .data import PRICE_COLUMNS, load_prices
-from .evaluation import evaluate_signal_grid
+from .evaluation import compute_hold_day_decay, evaluate_parameter_combination, evaluate_signal_grid
 from .features import TARGET_COL, build_features
 from .models import make_elasticnet_model, make_shallow_lightgbm
 from .performance import compute_performance_metrics, compute_trades_per_month, summarize_gross_vs_net
@@ -36,4 +36,6 @@ __all__ = [
     "compute_trades_per_month",
     "summarize_gross_vs_net",
     "evaluate_signal_grid",
+    "evaluate_parameter_combination",
+    "compute_hold_day_decay",
 ]
