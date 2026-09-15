@@ -11,6 +11,12 @@ from .grid_runner import (
     run_full_grid,
 )
 from .models import make_elasticnet_model, make_shallow_lightgbm
+from .robustness import (
+    STEPS as ROBUSTNESS_STEPS,
+    build_nudge_plan,
+    compute_robustness_verdicts,
+    expensive_combos_needed,
+)
 from .performance import compute_performance_metrics, compute_trades_per_month, summarize_gross_vs_net
 from .signals import (
     Trade,
@@ -50,4 +56,8 @@ __all__ = [
     "make_elasticnet_fixed_model",
     "run_expensive_combo",
     "run_full_grid",
+    "ROBUSTNESS_STEPS",
+    "build_nudge_plan",
+    "compute_robustness_verdicts",
+    "expensive_combos_needed",
 ]
