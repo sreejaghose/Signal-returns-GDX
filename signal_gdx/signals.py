@@ -68,8 +68,11 @@ def sweep_signal_thresholds(
 class Trade:
     date: pd.Timestamp
     action: str  # "open", "restart", "double_down", "flip", "close"
-    direction: int
-    size: int
+    direction: int  # position direction after this event
+    size: int  # position size after this event
+    prev_direction: int = 0
+    prev_size: int = 0
+    notional: float = 0.0  # exposure units actually transacted, for cost calc
 
 
 def build_positions(
@@ -103,7 +106,17 @@ def build_positions(
         stack beyond a double) without touching the hold clock. If the new
         signal is in the *opposite* direction, doubling down makes no sense,
         so it is treated like restart_clock: the position flips to the new
-        direction at 1x with the clock reset.
+        direction at 1x with the clock reset. A same-direction signal that
+        arrives once already at the 2x cap is a true no-op: no trade is
+        logged and nothing is transacted.
+
+    Every logged Trade carries `notional`: the exposure units actually
+    transacted by that event, for cost modeling downstream (see
+    signal_gdx.costs). An open/close trades the full size being
+    established/unwound; a restart or flip is treated as closing the old
+    leg and opening the new one even when direction is unchanged (a
+    restart is itself a transaction, not a free extension); a double_down
+    only trades the incremental unit added.
 
     Args:
         signal: +1/0/-1 series indexed by date (as from raw_threshold_signal
@@ -136,30 +149,43 @@ def build_positions(
                 if overlap_rule == "ignore_new_signal":
                     pass
                 elif overlap_rule == "restart_clock":
+                    prev_dir, prev_size = pos_dir, pos_size
                     action = "restart" if raw_signal == pos_dir else "flip"
                     pos_dir, pos_size, days_remaining = raw_signal, 1, hold_days
-                    trades.append(Trade(date, action, pos_dir, pos_size))
+                    trades.append(
+                        Trade(date, action, pos_dir, pos_size, prev_dir, prev_size, prev_size + pos_size)
+                    )
                 elif overlap_rule == "double_down":
                     if raw_signal == pos_dir:
-                        pos_size = min(pos_size + 1, 2)
-                        trades.append(Trade(date, "double_down", pos_dir, pos_size))
+                        if pos_size < 2:
+                            prev_dir, prev_size = pos_dir, pos_size
+                            pos_size = min(pos_size + 1, 2)
+                            trades.append(
+                                Trade(date, "double_down", pos_dir, pos_size, prev_dir, prev_size, pos_size - prev_size)
+                            )
+                        # already at the 2x cap: no-op, nothing transacted
                     else:
+                        prev_dir, prev_size = pos_dir, pos_size
                         pos_dir, pos_size, days_remaining = raw_signal, 1, hold_days
-                        trades.append(Trade(date, "flip", pos_dir, pos_size))
+                        trades.append(
+                            Trade(date, "flip", pos_dir, pos_size, prev_dir, prev_size, prev_size + pos_size)
+                        )
 
             positions.loc[date] = pos_dir * pos_size
             days_remaining -= 1
             if days_remaining == 0:
-                trades.append(Trade(date, "close", 0, 0))
+                prev_dir, prev_size = pos_dir, pos_size
+                trades.append(Trade(date, "close", 0, 0, prev_dir, prev_size, prev_size))
                 pos_dir, pos_size = 0, 0
         else:
             if raw_signal != 0:
                 pos_dir, pos_size, days_remaining = raw_signal, 1, hold_days
-                trades.append(Trade(date, "open", pos_dir, pos_size))
+                trades.append(Trade(date, "open", pos_dir, pos_size, 0, 0, pos_size))
                 positions.loc[date] = pos_dir * pos_size
                 days_remaining -= 1
                 if days_remaining == 0:
-                    trades.append(Trade(date, "close", 0, 0))
+                    prev_dir, prev_size = pos_dir, pos_size
+                    trades.append(Trade(date, "close", 0, 0, prev_dir, prev_size, prev_size))
                     pos_dir, pos_size = 0, 0
 
     return positions, trades
