@@ -3,6 +3,7 @@ from .costs import CostModel, apply_costs, compute_transaction_costs
 from .data import PRICE_COLUMNS, load_prices
 from .evaluation import compute_hold_day_decay, evaluate_parameter_combination, evaluate_signal_grid
 from .features import TARGET_COL, build_features
+from .holdout import compute_holdout_start, evaluate_candidate_on_holdout, flag_holdout_degradation
 from .grid_runner import (
     DEFAULT_REG_STRENGTH_GRID,
     build_model_for_grid,
@@ -60,4 +61,7 @@ __all__ = [
     "build_nudge_plan",
     "compute_robustness_verdicts",
     "expensive_combos_needed",
+    "compute_holdout_start",
+    "evaluate_candidate_on_holdout",
+    "flag_holdout_degradation",
 ]
